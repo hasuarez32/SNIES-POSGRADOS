@@ -58,15 +58,10 @@ TMP_DIR.mkdir(parents=True, exist_ok=True)
 SNIES_URL = "https://hecaa.mineducacion.gov.co/consultaspublicas/programas"
 DOWNLOAD_TIMEOUT = 120
 
-# XPaths del flujo de posgrado — anclados a value/label estables, no a IDs dinámicos JSF
+# XPath del botón de descarga — anclado al texto visible, no a IDs dinámicos JSF
+# Los filtros ya no usan XPaths: se aplican via _pf_select_radio con los values del input
 XPATHS = {
-    # Radio input value="S" → sube dos niveles (ui-helper-hidden-accessible > ui-radiobutton) → div clickeable
-    "institucion": '//input[@type="radio" and @value="S"]/../../div[contains(@class,"ui-radiobutton-box")]',
-    "programa":    '//input[@type="radio" and @value="01"]/../../div[contains(@class,"ui-radiobutton-box")]',
-    "academico":   '//input[@type="radio" and @value="02"]/../../div[contains(@class,"ui-radiobutton-box")]',
-    # value="" es ambiguo (múltiples radios vacíos posibles), anclar por label visible "Todos"
-    "formacion":   '//label[normalize-space()="Todos"]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
-    "descarga":    '//button[.//span[normalize-space()="Descargar programas"]]',
+    "descarga": '//button[.//span[normalize-space()="Descargar programas"]]',
 }
 
 # ── Columnas de trabajo ───────────────────────────────────────────────────────
@@ -142,6 +137,27 @@ def _safe_click(driver: webdriver.Chrome, xpath: str, timeout: int = 15) -> None
             time.sleep(2)
 
 
+def _pf_select_radio(driver: webdriver.Chrome, input_value: str, timeout: int = 30) -> None:
+    """Fuerza la selección de un radio PrimeFaces via JS y dispara el onchange,
+    aunque el valor ya estuviera seleccionado (el onchange no dispara en clicks normales)."""
+    xpath = f'//input[@type="radio" and @value="{input_value}"]'
+    el = WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.XPATH, xpath))
+    )
+    driver.execute_script("""
+        var el = arguments[0];
+        var grp = document.querySelectorAll('input[type="radio"][name="' + el.name + '"]');
+        grp.forEach(function(r) { r.checked = false; });
+        el.checked = true;
+        if (window.jQuery) {
+            jQuery(el).trigger('change');
+        } else {
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    """, el)
+    log.info(f"[pf_radio] Seleccionado value='{input_value}' en grupo '{el.get_attribute('name')}'")
+
+
 def _wait_ajax(driver: webdriver.Chrome, timeout: int = 20) -> None:
     try:
         WebDriverWait(driver, timeout).until(
@@ -176,16 +192,16 @@ def descargar_snies(download_dir: Path) -> Path:
         log.info(f"[posgrado] Screenshot guardado en {screenshot_path}")
 
         log.info("[posgrado] Aplicando filtros (institución activa, programa activo, posgrado, todos)...")
-        _safe_click(driver, xp["institucion"], timeout=30)
+        _pf_select_radio(driver, "S")       # Estado institución = Activo
         _wait_ajax(driver)
         time.sleep(3)
-        _safe_click(driver, xp["programa"], timeout=30)
+        _pf_select_radio(driver, "01")      # Estado programa = Activo
         _wait_ajax(driver)
         time.sleep(3)
-        _safe_click(driver, xp["academico"], timeout=30)
+        _pf_select_radio(driver, "02")      # Nivel académico = Posgrado
         _wait_ajax(driver)
         time.sleep(3)
-        _safe_click(driver, xp["formacion"], timeout=30)
+        _pf_select_radio(driver, "")        # Nivel formación = Todos
         _wait_ajax(driver)
         time.sleep(3)
 

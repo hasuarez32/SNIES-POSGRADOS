@@ -181,32 +181,32 @@ def descargar_snies(download_dir: Path) -> Path:
         driver.save_screenshot(str(screenshot_path))
         log.info(f"[posgrado] Screenshot guardado en {screenshot_path}")
 
-        log.info("[posgrado] Aplicando filtros (institución activa, programa activo, posgrado, todos)...")
-        # Navegamos input→parent(ui-helper-hidden-accessible)→sibling(ui-radiobutton-box)
+        log.info("[posgrado] Aplicando filtros (institución activa, programa activo, posgrado)...")
+        # Usamos el LABEL para navegar al box — los labels con cuentas son únicos en la página.
+        # label→padre(td)→hijo div.ui-radiobutton→hijo div.ui-radiobutton-box
         _click_radio_box(driver,
-            '//input[@type="radio" and @value="S"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            '//label[normalize-space()="Activo"]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
             "institución Activo")
         _wait_ajax(driver)
         time.sleep(3)
+
         _click_radio_box(driver,
-            '//input[@type="radio" and @value="01"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            '//label[starts-with(normalize-space(),"Activo (")]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
             "programa Activo")
         _wait_ajax(driver)
         time.sleep(3)
+
         _click_radio_box(driver,
-            '//input[@type="radio" and @value="02"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            '//label[starts-with(normalize-space(),"Posgrado (")]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
             "académico Posgrado")
         _wait_ajax(driver)
-        time.sleep(3)
-        # "Todos" tiene value="" (ambiguo), navegamos desde el label→td→box
-        _click_radio_box(driver,
-            '//label[normalize-space()="Todos"]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
-            "formación Todos")
-        _wait_ajax(driver)
-        time.sleep(3)
+        time.sleep(5)
 
-        # Screenshot post-filtros para confirmar que la página actualizó
+        # "Nivel Formación: Todos" es el default — no se toca para evitar ambigüedad
+        # con los otros labels "Todos" del panel (Estado Institución, Tipo de sede, etc.)
+
         driver.save_screenshot(str(TMP_DIR / "debug_post_filtros.png"))
+        log.info("[posgrado] Screenshot post-filtros guardado")
 
         log.info("[posgrado] Solicitando descarga...")
         _safe_click(driver, xp["descarga"])

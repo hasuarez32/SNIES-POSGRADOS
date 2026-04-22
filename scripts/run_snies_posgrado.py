@@ -137,37 +137,15 @@ def _safe_click(driver: webdriver.Chrome, xpath: str, timeout: int = 15) -> None
             time.sleep(2)
 
 
-def _pf_fire_radio(driver: webdriver.Chrome, el) -> None:
-    """Marca el input radio y llama su onchange (el PrimeFaces.ab embebido en el HTML)."""
-    driver.execute_script("""
-        var el = arguments[0];
-        document.querySelectorAll('input[type="radio"][name="' + el.name + '"]')
-            .forEach(function(r) { r.checked = false; });
-        el.checked = true;
-        if (typeof el.onchange === 'function') { el.onchange.call(el); }
-    """, el)
-
-
-def _pf_select_radio_by_value(driver: webdriver.Chrome, input_value: str, timeout: int = 30) -> None:
-    xpath = f'//input[@type="radio" and @value="{input_value}"]'
+def _click_radio_box(driver: webdriver.Chrome, box_xpath: str, label: str, timeout: int = 30) -> None:
+    """Hace JavaScript .click() en el div.ui-radiobutton-box de PrimeFaces.
+    PrimeFaces escucha click en el box (no onchange del input), así que esto
+    dispara su handler jQuery que actualiza el input y llama PrimeFaces.ab()."""
     el = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.XPATH, xpath))
+        EC.presence_of_element_located((By.XPATH, box_xpath))
     )
-    name = el.get_attribute("name")
-    _pf_fire_radio(driver, el)
-    log.info(f"[pf_radio] value='{input_value}' → grupo '{name}'")
-
-
-def _pf_select_radio_by_label(driver: webdriver.Chrome, label_text: str, timeout: int = 30) -> None:
-    """Busca el input via el atributo 'for' del label — útil cuando value='' es ambiguo."""
-    label_el = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.XPATH, f'//label[normalize-space()="{label_text}"]'))
-    )
-    input_id = label_el.get_attribute("for")
-    el = driver.find_element(By.ID, input_id)
-    name = el.get_attribute("name")
-    _pf_fire_radio(driver, el)
-    log.info(f"[pf_radio] label='{label_text}' → input#{input_id} grupo '{name}'")
+    driver.execute_script("arguments[0].click();", el)
+    log.info(f"[radio] click JS en box → {label}")
 
 
 def _wait_ajax(driver: webdriver.Chrome, timeout: int = 20) -> None:
@@ -204,18 +182,31 @@ def descargar_snies(download_dir: Path) -> Path:
         log.info(f"[posgrado] Screenshot guardado en {screenshot_path}")
 
         log.info("[posgrado] Aplicando filtros (institución activa, programa activo, posgrado, todos)...")
-        _pf_select_radio_by_value(driver, "S")       # Estado institución = Activo
+        # Navegamos input→parent(ui-helper-hidden-accessible)→sibling(ui-radiobutton-box)
+        _click_radio_box(driver,
+            '//input[@type="radio" and @value="S"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            "institución Activo")
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio_by_value(driver, "01")      # Estado programa = Activo
+        _click_radio_box(driver,
+            '//input[@type="radio" and @value="01"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            "programa Activo")
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio_by_value(driver, "02")      # Nivel académico = Posgrado
+        _click_radio_box(driver,
+            '//input[@type="radio" and @value="02"]/../following-sibling::div[contains(@class,"ui-radiobutton-box")]',
+            "académico Posgrado")
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio_by_label(driver, "Todos")   # Nivel formación = Todos
+        # "Todos" tiene value="" (ambiguo), navegamos desde el label→td→box
+        _click_radio_box(driver,
+            '//label[normalize-space()="Todos"]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
+            "formación Todos")
         _wait_ajax(driver)
         time.sleep(3)
+
+        # Screenshot post-filtros para confirmar que la página actualizó
+        driver.save_screenshot(str(TMP_DIR / "debug_post_filtros.png"))
 
         log.info("[posgrado] Solicitando descarga...")
         _safe_click(driver, xp["descarga"])

@@ -43,12 +43,12 @@ jobs:
           DESTINATARIOS: ${{ secrets.DESTINATARIOS }}
         run: python scripts/run_snies_posgrado.py
 
-      - name: Subir screenshot de debug
+      - name: Subir screenshots de debug
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-screenshot
-          path: tmp/debug_snies.png
+          name: debug-screenshots
+          path: tmp/*.png
           retention-days: 3
 
       - name: Commitear cambios

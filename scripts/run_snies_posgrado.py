@@ -137,25 +137,37 @@ def _safe_click(driver: webdriver.Chrome, xpath: str, timeout: int = 15) -> None
             time.sleep(2)
 
 
-def _pf_select_radio(driver: webdriver.Chrome, input_value: str, timeout: int = 30) -> None:
-    """Fuerza la selección de un radio PrimeFaces via JS y dispara el onchange,
-    aunque el valor ya estuviera seleccionado (el onchange no dispara en clicks normales)."""
+def _pf_fire_radio(driver: webdriver.Chrome, el) -> None:
+    """Marca el input radio y llama su onchange (el PrimeFaces.ab embebido en el HTML)."""
+    driver.execute_script("""
+        var el = arguments[0];
+        document.querySelectorAll('input[type="radio"][name="' + el.name + '"]')
+            .forEach(function(r) { r.checked = false; });
+        el.checked = true;
+        if (typeof el.onchange === 'function') { el.onchange.call(el); }
+    """, el)
+
+
+def _pf_select_radio_by_value(driver: webdriver.Chrome, input_value: str, timeout: int = 30) -> None:
     xpath = f'//input[@type="radio" and @value="{input_value}"]'
     el = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.XPATH, xpath))
     )
-    driver.execute_script("""
-        var el = arguments[0];
-        var grp = document.querySelectorAll('input[type="radio"][name="' + el.name + '"]');
-        grp.forEach(function(r) { r.checked = false; });
-        el.checked = true;
-        if (window.jQuery) {
-            jQuery(el).trigger('change');
-        } else {
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    """, el)
-    log.info(f"[pf_radio] Seleccionado value='{input_value}' en grupo '{el.get_attribute('name')}'")
+    name = el.get_attribute("name")
+    _pf_fire_radio(driver, el)
+    log.info(f"[pf_radio] value='{input_value}' → grupo '{name}'")
+
+
+def _pf_select_radio_by_label(driver: webdriver.Chrome, label_text: str, timeout: int = 30) -> None:
+    """Busca el input via el atributo 'for' del label — útil cuando value='' es ambiguo."""
+    label_el = WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.XPATH, f'//label[normalize-space()="{label_text}"]'))
+    )
+    input_id = label_el.get_attribute("for")
+    el = driver.find_element(By.ID, input_id)
+    name = el.get_attribute("name")
+    _pf_fire_radio(driver, el)
+    log.info(f"[pf_radio] label='{label_text}' → input#{input_id} grupo '{name}'")
 
 
 def _wait_ajax(driver: webdriver.Chrome, timeout: int = 20) -> None:
@@ -192,16 +204,16 @@ def descargar_snies(download_dir: Path) -> Path:
         log.info(f"[posgrado] Screenshot guardado en {screenshot_path}")
 
         log.info("[posgrado] Aplicando filtros (institución activa, programa activo, posgrado, todos)...")
-        _pf_select_radio(driver, "S")       # Estado institución = Activo
+        _pf_select_radio_by_value(driver, "S")       # Estado institución = Activo
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio(driver, "01")      # Estado programa = Activo
+        _pf_select_radio_by_value(driver, "01")      # Estado programa = Activo
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio(driver, "02")      # Nivel académico = Posgrado
+        _pf_select_radio_by_value(driver, "02")      # Nivel académico = Posgrado
         _wait_ajax(driver)
         time.sleep(3)
-        _pf_select_radio(driver, "")        # Nivel formación = Todos
+        _pf_select_radio_by_label(driver, "Todos")   # Nivel formación = Todos
         _wait_ajax(driver)
         time.sleep(3)
 

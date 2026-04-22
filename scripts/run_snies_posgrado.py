@@ -400,6 +400,25 @@ def procesar(cat: pd.DataFrame, today: date) -> dict:
 
     log.info(f"[posgrado] Snapshot ANTERIOR: {anterior_path.name} ({len(df_ant)} programas)")
 
+    # Validar que ambos snapshots sean razonables (posgrado activo ≈ 8-11k programas)
+    # Si alguno supera 12k, probablemente descargó sin filtro de nivel académico
+    UMBRAL = 12_000
+    if len(df_hoy) > UMBRAL:
+        log.error(
+            f"[posgrado] Snapshot HOY tiene {len(df_hoy)} programas — demasiados para ser "
+            "solo posgrado activo. Probable descarga sin filtros. Abortando comparación."
+        )
+        raw_file.unlink(missing_ok=True)
+        return vacio
+    if len(df_ant) > UMBRAL:
+        log.error(
+            f"[posgrado] Snapshot ANTERIOR ({anterior_path.name}) tiene {len(df_ant)} programas "
+            "— parece un archivo sin filtrar. Abortando comparación. "
+            "Considera eliminarlo manualmente de Programas/ si es inválido."
+        )
+        raw_file.unlink(missing_ok=True)
+        return vacio
+
     # 5. Detectar novedades
     nuevos, inactivos, modificados = detectar_novedades(df_hoy, df_ant, today)
     log.info(

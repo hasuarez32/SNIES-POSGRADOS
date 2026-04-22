@@ -43,11 +43,11 @@ log = logging.getLogger(__name__)
 
 # ── Rutas base ────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent.parent
-DATA_DIR = ROOT / "data"
-NOVEDADES_DIR = ROOT / "Análisis programas postgrado SNIES"
+DATA_DIR     = ROOT / "data"
+NOVEDADES_DIR = ROOT / "data" / "novedades"
 PROGRAMAS_DIR = ROOT / "Programas"
-CAT_FILE = ROOT / "Categorización divisiones SNIES .xlsx"
-TMP_DIR = ROOT / "tmp"
+CAT_FILE      = ROOT / "Categorización divisiones SNIES .xlsx"
+TMP_DIR       = ROOT / "tmp"
 
 NOVEDADES_DIR.mkdir(parents=True, exist_ok=True)
 PROGRAMAS_DIR.mkdir(parents=True, exist_ok=True)
@@ -391,13 +391,21 @@ def procesar(cat: pd.DataFrame, today: date) -> dict:
     log.info("── POSGRADO ──────────────────────────────────")
     vacio = {"nuevos": pd.DataFrame(), "inactivos": pd.DataFrame(), "modificados": pd.DataFrame()}
 
-    # 1. Descargar
-    download_dir = TMP_DIR / "posgrado"
-    download_dir.mkdir(parents=True, exist_ok=True)
-    raw_file = descargar_snies(download_dir)
+    # 1. Descargar (o reutilizar si ya existe el archivo de hoy)
+    today_archive = PROGRAMAS_DIR / f"Programas postgrado {today.strftime('%d-%m-%y')}.xlsx"
+    if today_archive.exists():
+        log.info(f"[posgrado] Archivo de hoy ya archivado ({today_archive.name}). Saltando descarga.")
+        raw_file = today_archive
+        ya_archivado = True
+    else:
+        download_dir = TMP_DIR / "posgrado"
+        download_dir.mkdir(parents=True, exist_ok=True)
+        raw_file = descargar_snies(download_dir)
+        ya_archivado = False
 
-    # 2. Archivar el Excel crudo
-    archivar_descarga(raw_file, today)
+    # 2. Archivar el Excel crudo (solo si fue descargado ahora)
+    if not ya_archivado:
+        archivar_descarga(raw_file, today)
 
     # 3. Cargar snapshot de hoy
     df_hoy = load_snapshot(raw_file)
@@ -451,21 +459,22 @@ def procesar(cat: pd.DataFrame, today: date) -> dict:
     inactivos = merge_division(inactivos, cat)
     modificados = merge_division(modificados, cat)
 
-    # 7. Acumular y guardar
+    # 7. Acumular y guardar en data/novedades/
     _guardar(
-        acumular(NOVEDADES_DIR / "Nuevos posgrado.xlsx", nuevos),
-        NOVEDADES_DIR / "Nuevos posgrado.xlsx",
+        acumular(NOVEDADES_DIR / "Nuevos_posgrado.xlsx", nuevos),
+        NOVEDADES_DIR / "Nuevos_posgrado.xlsx",
     )
     _guardar(
-        acumular(NOVEDADES_DIR / "Inactivos posgrado.xlsx", inactivos),
-        NOVEDADES_DIR / "Inactivos posgrado.xlsx",
+        acumular(NOVEDADES_DIR / "Inactivos_posgrado.xlsx", inactivos),
+        NOVEDADES_DIR / "Inactivos_posgrado.xlsx",
     )
     _guardar(
-        acumular(NOVEDADES_DIR / "Modificados posgrado.xlsx", modificados),
-        NOVEDADES_DIR / "Modificados posgrado.xlsx",
+        acumular(NOVEDADES_DIR / "Modificados_posgrado.xlsx", modificados),
+        NOVEDADES_DIR / "Modificados_posgrado.xlsx",
     )
 
-    raw_file.unlink(missing_ok=True)
+    if not ya_archivado:
+        raw_file.unlink(missing_ok=True)
 
     return {"nuevos": nuevos, "inactivos": inactivos, "modificados": modificados}
 

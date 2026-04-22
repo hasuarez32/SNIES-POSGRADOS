@@ -24,7 +24,7 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).parent.parent
-NOVEDADES_DIR = ROOT / "Análisis programas postgrado SNIES"
+NOVEDADES_DIR = ROOT / "data" / "novedades"
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587

@@ -26,7 +26,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 BASE = Path(__file__).resolve().parent
-NOVEDADES_DIR = BASE / "Análisis programas postgrado SNIES"
+NOVEDADES_DIR = BASE / "data" / "novedades"
 
 DIV_COL = "DIVISIÓN UNINORTE"
 SNIES_COL = "CÓDIGO_SNIES_DEL_PROGRAMA"
@@ -130,8 +130,8 @@ def generar_graficos() -> list[str]:
     generados: list[str] = []
 
     # Gráfico 1: Nuevos vs Inactivos por división
-    nuevos_c = _conteo_por_division(NOVEDADES_DIR / "Nuevos posgrado.xlsx").rename("Nuevos")
-    inactivos_c = _conteo_por_division(NOVEDADES_DIR / "Inactivos posgrado.xlsx").rename("Inactivos")
+    nuevos_c = _conteo_por_division(NOVEDADES_DIR / "Nuevos_posgrado.xlsx").rename("Nuevos")
+    inactivos_c = _conteo_por_division(NOVEDADES_DIR / "Inactivos_posgrado.xlsx").rename("Inactivos")
     conteos = (
         pd.concat([nuevos_c, inactivos_c], axis=1)
         .fillna(0)
@@ -150,7 +150,7 @@ def generar_graficos() -> list[str]:
         print("[posgrado] Sin datos suficientes para el gráfico de novedades.")
 
     # Gráfico 2: Modificados únicos por división
-    modificados = _conteo_modificados_unicos_por_division(NOVEDADES_DIR / "Modificados posgrado.xlsx")
+    modificados = _conteo_modificados_unicos_por_division(NOVEDADES_DIR / "Modificados_posgrado.xlsx")
     out_mod = NOVEDADES_DIR / "grafico_modificados_unicos_por_division_posgrado.png"
     if modificados.empty:
         print("[posgrado] Sin datos suficientes para el gráfico de modificados por división.")

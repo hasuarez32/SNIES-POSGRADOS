@@ -12,6 +12,7 @@ Ejecución:
 """
 
 import os
+import re
 import sys
 import logging
 import shutil
@@ -57,13 +58,15 @@ TMP_DIR.mkdir(parents=True, exist_ok=True)
 SNIES_URL = "https://hecaa.mineducacion.gov.co/consultaspublicas/programas"
 DOWNLOAD_TIMEOUT = 120
 
-# XPaths del flujo de posgrado (extraídos del notebook sniespos.ipynb)
+# XPaths del flujo de posgrado — anclados a value/label estables, no a IDs dinámicos JSF
 XPATHS = {
-    "institucion": '//*[@id="formFiltro:j_idt33"]/tbody/tr[2]/td/div/div[2]',
-    "programa":    '//*[@id="formFiltro:j_idt65"]/tbody/tr[2]/td/div/div[2]',
-    "academico":   '//*[@id="formFiltro:j_idt102"]/tbody/tr[3]/td/div/div[2]',
-    "formacion":   '//*[@id="formFiltro:j_idt108"]/tbody/tr[1]/td/div/div[2]',
-    "descarga":    '//*[@id="j_idt153:j_idt155"]',
+    # Radio input value="S" → sube dos niveles (ui-helper-hidden-accessible > ui-radiobutton) → div clickeable
+    "institucion": '//input[@type="radio" and @value="S"]/../../div[contains(@class,"ui-radiobutton-box")]',
+    "programa":    '//input[@type="radio" and @value="01"]/../../div[contains(@class,"ui-radiobutton-box")]',
+    "academico":   '//input[@type="radio" and @value="02"]/../../div[contains(@class,"ui-radiobutton-box")]',
+    # value="" es ambiguo (múltiples radios vacíos posibles), anclar por label visible "Todos"
+    "formacion":   '//label[normalize-space()="Todos"]/../div[contains(@class,"ui-radiobutton")]/div[contains(@class,"ui-radiobutton-box")]',
+    "descarga":    '//button[.//span[normalize-space()="Descargar programas"]]',
 }
 
 # ── Columnas de trabajo ───────────────────────────────────────────────────────
@@ -345,6 +348,25 @@ def archivar_descarga(raw_file: Path, today: date) -> Path:
     return archive_path
 
 
+_PROG_RE = re.compile(r"Programas postgrado (\d{2}-\d{2}-\d{2})(?:__\d{6})?\.xlsx")
+
+def get_snapshot_anterior(today: date) -> Path | None:
+    candidates = []
+    for f in PROGRAMAS_DIR.glob("Programas postgrado *.xlsx"):
+        m = _PROG_RE.match(f.name)
+        if not m:
+            continue
+        try:
+            file_date = datetime.strptime(m.group(1), "%d-%m-%y").date()
+        except ValueError:
+            continue
+        if file_date < today:
+            candidates.append((file_date, f))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda x: x[0])[1]
+
+
 # ── Pipeline de posgrado ──────────────────────────────────────────────────────
 def procesar(cat: pd.DataFrame, today: date) -> dict:
     log.info("── POSGRADO ──────────────────────────────────")
@@ -362,29 +384,21 @@ def procesar(cat: pd.DataFrame, today: date) -> dict:
     df_hoy = load_snapshot(raw_file)
     log.info(f"[posgrado] Snapshot HOY: {len(df_hoy)} programas")
 
-    # 4. Cargar snapshot anterior
-    anterior_path = DATA_DIR / "Programas_posgrado_anterior.xlsx"
-    if not anterior_path.exists():
-        log.warning(
-            "[posgrado] No hay snapshot anterior. "
-            "Guardando el de hoy como línea base para el próximo run."
-        )
-        shutil.copy2(raw_file, anterior_path)
+    # 4. Cargar snapshot anterior (el más reciente en Programas/ antes de hoy)
+    anterior_path = get_snapshot_anterior(today)
+    if anterior_path is None:
+        log.warning("[posgrado] No hay snapshot anterior en Programas/. El de hoy quedará como línea base.")
         raw_file.unlink(missing_ok=True)
         return vacio
 
     try:
         df_ant = load_snapshot(anterior_path)
     except Exception as e:
-        log.warning(
-            f"[posgrado] Snapshot anterior no legible ({e}). "
-            "Reemplazando con el snapshot de hoy como nueva línea base."
-        )
-        shutil.copy2(raw_file, anterior_path)
+        log.warning(f"[posgrado] Snapshot anterior no legible ({e}). Abortando comparación.")
         raw_file.unlink(missing_ok=True)
         return vacio
 
-    log.info(f"[posgrado] Snapshot ANTERIOR: {len(df_ant)} programas")
+    log.info(f"[posgrado] Snapshot ANTERIOR: {anterior_path.name} ({len(df_ant)} programas)")
 
     # 5. Detectar novedades
     nuevos, inactivos, modificados = detectar_novedades(df_hoy, df_ant, today)
@@ -413,10 +427,7 @@ def procesar(cat: pd.DataFrame, today: date) -> dict:
         NOVEDADES_DIR / "Modificados posgrado.xlsx",
     )
 
-    # 8. Rotar snapshot
-    shutil.copy2(raw_file, anterior_path)
     raw_file.unlink(missing_ok=True)
-    log.info("[posgrado] Snapshot anterior actualizado.")
 
     return {"nuevos": nuevos, "inactivos": inactivos, "modificados": modificados}
 

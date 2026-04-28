@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNIES Monitor · Posgrado</title>
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+header { background: linear-gradient(135deg, #003f88 0%, #0059c1 100%);
+         color: #fff; padding: 1.2rem 2rem;
+         display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+header h1 { font-size: 1.4rem; font-weight: 700; }
+header .sub { font-size: 0.82rem; opacity: 0.8; margin-top: 3px; }
+.back { color: #ffd166; text-decoration: none; font-size: 0.82rem;
+        border: 1px solid rgba(255,209,102,0.5); padding: 5px 12px;
+        border-radius: 5px; white-space: nowrap; margin-left: auto; }
+.back:hover { background: rgba(255,209,102,0.15); }
+main { max-width: 1440px; margin: 0 auto; padding: 1.5rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+         gap: 1rem; margin-bottom: 1.5rem; }
+.card { background: #fff; border-radius: 10px; padding: 1.2rem 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+               color: #6b7280; margin-bottom: 4px; }
+.card .value { font-size: 2rem; font-weight: 800; color: #003f88; line-height: 1.1; }
+.card .sub { font-size: 0.77rem; color: #9ca3af; margin-top: 4px; }
+.card.green .value { color: #059669; }
+.card.red .value { color: #dc2626; }
+.card.amber .value { color: #d97706; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+          gap: 1rem; margin-bottom: 1.5rem; }
+.chart-box { background: #fff; border-radius: 10px; padding: 1rem 1.2rem;
+             box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.chart-box h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .06em;
+                color: #6b7280; margin-bottom: 0.6rem; }
+.filters { background: #fff; border-radius: 10px; padding: 1rem 1.5rem;
+           box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 1.5rem;
+           display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-end; }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 0.68rem; text-transform: uppercase; color: #6b7280;
+             letter-spacing: .05em; font-weight: 600; }
+.fg select, .fg input {
+  border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px;
+  font-size: 0.83rem; color: #1a1a2e; background: #f9fafb; min-width: 140px; }
+.fg select:focus, .fg input:focus {
+  outline: none; border-color: #003f88; background: #fff; box-shadow: 0 0 0 2px rgba(0,63,136,.1); }
+.btn-clear { padding: 6px 14px; border: 1px solid #e5e7eb; border-radius: 6px;
+             background: #f9fafb; cursor: pointer; font-size: 0.83rem;
+             color: #6b7280; align-self: flex-end; }
+.btn-clear:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.table-wrap { background: #fff; border-radius: 10px; padding: 1rem 1.2rem;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow-x: auto; }
+.table-info { font-size: 0.8rem; color: #6b7280; margin-bottom: 0.75rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+th { background: #f8fafc; position: sticky; top: 0; z-index: 1;
+     border-bottom: 2px solid #e5e7eb; padding: 9px 10px; text-align: left;
+     white-space: nowrap; cursor: pointer; user-select: none;
+     color: #374151; font-weight: 600; }
+th:hover { background: #eff6ff; color: #003f88; }
+th.asc::after { content: ' ↑'; color: #003f88; }
+th.desc::after { content: ' ↓'; color: #003f88; }
+td { border-bottom: 1px solid #f3f4f6; padding: 7px 10px; vertical-align: top; }
+td.prog { max-width: 260px; }
+td.inst { max-width: 220px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f5f9ff; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px;
+         font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+.b-oficial { background: #dbeafe; color: #1e40af; }
+.b-privado { background: #fef3c7; color: #92400e; }
+.b-maestria { background: #ede9fe; color: #5b21b6; }
+.b-doctorado { background: #fce7f3; color: #9d174d; }
+.b-esp-univ { background: #d1fae5; color: #065f46; }
+.b-esp-med { background: #ffedd5; color: #9a3412; }
+.b-esp-tec { background: #e0f2fe; color: #075985; }
+.change-pill { background: #fff7ed; color: #9a3412; padding: 2px 7px;
+               border-radius: 5px; font-family: monospace; font-size: 0.75rem;
+               display: inline-block; max-width: 300px; word-break: break-all; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.hero { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+         gap:1rem; margin-bottom:1.5rem; }
+.hero-card { background:#fff; border-radius:12px; padding:1.5rem;
+              box-shadow:0 2px 8px rgba(0,0,0,.07); text-decoration:none;
+              color:inherit; border-left:5px solid #e5e7eb;
+              transition:transform .15s,box-shadow .15s; display:block; }
+.hero-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.12); }
+.hero-card.green { border-color:#059669; }
+.hero-card.red { border-color:#dc2626; }
+.hero-card.amber { border-color:#d97706; }
+.hc-tag { font-size:.7rem; text-transform:uppercase; letter-spacing:.07em;
+           color:#6b7280; font-weight:700; margin-bottom:6px; }
+.hc-num { font-size:2.6rem; font-weight:800; line-height:1; }
+.hero-card.green .hc-num { color:#059669; }
+.hero-card.red .hc-num { color:#dc2626; }
+.hero-card.amber .hc-num { color:#d97706; }
+.hc-sub { font-size:.78rem; color:#9ca3af; margin-top:5px; }
+.hc-arrow { float:right; font-size:1.3rem; color:#d1d5db; margin-top:-36px; }
+.full { grid-column:1/-1 !important; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>SNIES Monitor · Posgrado</h1>
+    <div class="sub">Programas de posgrado en Colombia · Actualizado: 2026-04-28</div>
+  </div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card">
+      <div class="label">Programas activos (último snapshot)</div>
+      <div class="value">8,542</div>
+      <div class="sub">Fecha: 2026-04-22</div>
+    </div>
+    <div class="card green">
+      <div class="label">Nuevos · último run</div>
+      <div class="value">317</div>
+      <div class="sub">Acumulado: 373 · 2026-04-22</div>
+    </div>
+    <div class="card red">
+      <div class="label">Inactivos · último run</div>
+      <div class="value">206</div>
+      <div class="sub">Acumulado: 227 · 2026-04-22</div>
+    </div>
+    <div class="card amber">
+      <div class="label">Modificados · último run</div>
+      <div class="value">6,505</div>
+      <div class="sub">Acumulado: 6,531 · 2026-04-22</div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <a class="hero-card green" href="nuevos.html">
+      <div class="hc-tag">Programas Nuevos</div>
+      <div class="hc-num">317</div>
+      <div class="hc-sub">en el último run &nbsp;·&nbsp; 373 acumulados</div>
+      <div class="hc-arrow">→</div>
+    </a>
+    <a class="hero-card red" href="inactivos.html">
+      <div class="hc-tag">Programas Inactivos</div>
+      <div class="hc-num">206</div>
+      <div class="hc-sub">en el último run &nbsp;·&nbsp; 227 acumulados</div>
+      <div class="hc-arrow">→</div>
+    </a>
+    <a class="hero-card amber" href="modificados.html">
+      <div class="hc-tag">Programas Modificados</div>
+      <div class="hc-num">6,505</div>
+      <div class="hc-sub">en el último run &nbsp;·&nbsp; 6,531 acumulados</div>
+      <div class="hc-arrow">→</div>
+    </a>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box full" style="grid-column:1/-1">
+      <h3>Evolución histórica · programas de posgrado activos</h3>
+      <div id="ch-tl" style="height:260px"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Nuevos por nivel de formación</h3>
+      <div id="ch-niv-n" style="height:280px"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Inactivos por nivel de formación</h3>
+      <div id="ch-niv-i" style="height:280px"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Nuevos por sector</h3>
+      <div id="ch-sec" style="height:280px"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Nuevos por División Uninorte</h3>
+      <div id="ch-div" style="height:280px"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Top 12 departamentos con más inactivos</h3>
+      <div id="ch-dep-i" style="height:280px"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+<script>
+const D = {"timeline": {"dates": ["2025-04-23", "2025-04-30", "2025-05-21", "2025-05-28", "2025-06-25", "2025-07-23", "2025-07-30", "2025-08-20", "2025-08-27", "2026-04-22"], "counts": [8381, 8372, 8353, 8355, 8365, 8385, 8386, 8396, 8431, 8542]}, "niv_n": {"labels": ["Especialización universitaria", "Maestría", "Doctorado", "Especialización médico quirúrgica", "Especialización tecnológica"], "values": [205, 124, 23, 20, 1]}, "niv_i": {"labels": ["Especialización universitaria", "Maestría", "Especialización médico quirúrgica", "Especialización técnico profesional", "Especialización tecnológica"], "values": [107, 99, 17, 3, 1]}, "sec_n": {"labels": ["Privado", "Oficial"], "values": [276, 97]}, "div_n": {"labels": ["Escuela de Negocios", "Ingenierías", "Derecho, C. Política y Rel. Internacionales", "Instituto de Estudios en Educación", "Humanidades y Cs. Sociales", "Ciencias de la Salud", "Otro", "Ciencias Básicas", "Escuela de Arquitectura, Urbanismo y Diseño", "Instituto de Idiomas"], "values": [117, 60, 46, 39, 34, 34, 22, 13, 7, 1]}, "dep_i": {"labels": ["Antioquia", "Bogotá, D.C.", "Cauca", "Valle del Cauca", "Bolívar", "Nariño", "Chocó", "Magdalena", "Atlántico", "Córdoba", "Santander", "Caquetá"], "values": [50, 49, 37, 16, 8, 8, 7, 7, 6, 5, 5, 4]}};
+const LAY = {
+  margin: {l:10,r:10,t:10,b:10},
+  paper_bgcolor: 'transparent',
+  plot_bgcolor: 'transparent',
+  font: {family: 'inherit', size: 11},
+  showlegend: false
+};
+const CFG = {responsive:true, displayModeBar:false};
+const BL = ['#003f88','#0059c1','#2979d5','#5ba3e8','#98c9f5','#c3ddf5'];
+
+Plotly.newPlot('ch-tl', [{
+  x: D.timeline.dates, y: D.timeline.counts, type:'scatter', mode:'lines+markers',
+  line:{color:'#003f88',width:2.5}, marker:{size:7,color:'#003f88'},
+  fill:'tozeroy', fillcolor:'rgba(0,63,136,0.07)',
+  hovertemplate:'%{x}<br>%{y:,} programas<extra></extra>'
+}], {...LAY, margin:{l:60,r:20,t:20,b:60},
+       yaxis:{tickformat:',d'}}, CFG);
+
+Plotly.newPlot('ch-niv-n', [{
+  x: D.niv_n.values, y: D.niv_n.labels, type:'bar', orientation:'h',
+  marker:{color:'#059669'},
+  hovertemplate:'%{y}<br>%{x:,}<extra></extra>'
+}], {...LAY, margin:{l:230,r:30,t:10,b:30}}, CFG);
+
+Plotly.newPlot('ch-niv-i', [{
+  x: D.niv_i.values, y: D.niv_i.labels, type:'bar', orientation:'h',
+  marker:{color:'#dc2626'},
+  hovertemplate:'%{y}<br>%{x:,}<extra></extra>'
+}], {...LAY, margin:{l:230,r:30,t:10,b:30}}, CFG);
+
+Plotly.newPlot('ch-sec', [{
+  labels: D.sec_n.labels, values: D.sec_n.values, type:'pie', hole:0.42,
+  marker:{colors:['#003f88','#f0a500','#059669']},
+  textposition:'outside',
+  hovertemplate:'%{label}<br>%{value:,} (%{percent})<extra></extra>'
+}], {...LAY, margin:{l:20,r:20,t:20,b:20}, showlegend:true,
+       legend:{orientation:'h',y:-0.15}}, CFG);
+
+Plotly.newPlot('ch-div', [{
+  x: D.div_n.values, y: D.div_n.labels, type:'bar', orientation:'h',
+  marker:{color:'#0059c1'},
+  hovertemplate:'%{y}<br>%{x:,}<extra></extra>'
+}], {...LAY, margin:{l:260,r:30,t:10,b:30}}, CFG);
+
+Plotly.newPlot('ch-dep-i', [{
+  x: D.dep_i.values, y: D.dep_i.labels, type:'bar', orientation:'h',
+  marker:{color:'#dc2626'},
+  hovertemplate:'%{y}<br>%{x:,}<extra></extra>'
+}], {...LAY, margin:{l:160,r:30,t:10,b:30}}, CFG);
+</script>
+</body>
+</html>

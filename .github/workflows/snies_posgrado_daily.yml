@@ -51,10 +51,18 @@ jobs:
           path: tmp/*.png
           retention-days: 3
 
-      - name: Commitear cambios
+      - name: Commitear datos
         run: |
           git config user.name "snies-bot"
           git config user.email "snies-bot@uninorte.edu.co"
           git add data/ "Programas/"
           git diff --staged --quiet || git commit -m "snies-posgrado: $(date +'%Y-%m-%d')"
+
+      - name: Generar dashboard
+        run: python docs/generar_dashboard.py
+
+      - name: Commitear dashboard y publicar
+        run: |
+          git add docs/
+          git diff --staged --quiet || git commit -m "dashboard: $(date +'%Y-%m-%d')"
           git push
